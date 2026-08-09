@@ -52,3 +52,16 @@ Grok PASS_WITH_NOTES on the measurable core. Codex SERIOUS_PROBLEMS remains on f
 
 Residual (scale, not empty stages): full live GT over entire n_items on large models; powered multi-seed honesty regen.
 
+## P7 rigor pass (multi-feature live GT + powered honesty + patch ablation)
+
+| Fix | Status |
+|---|---|
+| Live GT for hint_reliance + sycophantic_agreement + format_compliance | OK (`apply_live_behavioral_gt`, per-feature `behavioral_gt_by_feature`) |
+| Holdout generalization claim gated to `live_*` sources | OK (`holdout_generalization_claim_ok`) |
+| Powered honesty via `honesty_min_live_n` (+ seed agreement stamp) | OK (`causal.paired_activation_patch`, eval yaml) |
+| Patch-position ablation: last_token vs mean_pool; carrier stamp | OK (`honesty_carrier_position`) |
+| Fail-closed robustness if only one position tried | OK (`patch_robustness_unproven`) |
+| Hub-free P7 domain tests | OK (`tests/test_domain_p7_honesty.py`) |
+
+Residual (scale): full n_items live GT on large models; production multi-seed honesty at scale.
+

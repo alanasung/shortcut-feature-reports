@@ -11,7 +11,12 @@ from omegaconf import DictConfig
 from ._util import ensure_dir, read_json, stage_result, write_json
 from .activations import try_collect_model_activations
 from .causal import ablate_direction, paired_activation_patch
-from .data import FEATURES, apply_live_paired_behavioral_gt, build_cued_bias_dataset
+from .data import (
+    FEATURES,
+    apply_live_behavioral_gt,
+    build_cued_bias_dataset,
+    is_live_gt_source,
+)
 from .probes import fit_feature_probes
 from .train import train_verbalizer
 from .verbalize import score_verbalization, synthetic_verbalize
@@ -48,6 +53,24 @@ def _revision(cfg: Any) -> str | None:
     return str(rev) if rev else None
 
 
+def _honesty_min_live_n(cfg: Any) -> int:
+    ev = getattr(cfg, "eval", None)
+    if ev is not None and getattr(ev, "honesty_min_live_n", None) is not None:
+        return max(1, int(ev.honesty_min_live_n))
+    exp = getattr(cfg, "experiment", None)
+    if exp is not None and getattr(exp, "honesty_min_live_n", None) is not None:
+        return max(1, int(exp.honesty_min_live_n))
+    return 8
+
+
+def _honesty_seeds(cfg: Any) -> list[int]:
+    base = _seed(cfg)
+    ev = getattr(cfg, "eval", None)
+    n = int(getattr(ev, "honesty_n_seeds", 1) or 1) if ev is not None else 1
+    n = max(1, min(n, 5))
+    return [base + i for i in range(n)]
+
+
 def stage_build_dataset(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
     holdout = str(getattr(getattr(cfg, "experiment", object()), "holdout_feature", "sycophantic_agreement"))
     if holdout not in FEATURES:
@@ -63,6 +86,8 @@ def stage_build_dataset(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
         "n_test": sum(1 for r in ds["items"] if r["split"] == "test"),
         "force_synthetic": _force_synthetic(cfg),
         "behavioral_gt_source": ds.get("behavioral_gt_source", "planted"),
+        "holdout_generalization_claim_ok": bool(ds.get("holdout_generalization_claim_ok", False)),
+        "honesty_min_live_n": _honesty_min_live_n(cfg),
     }
     payload = stage_result(task="build_dataset", seed=_seed(cfg), n=ds["n"], metrics=metrics)
     write_json(out / "results.json", payload)
@@ -82,11 +107,11 @@ def stage_collect(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
             model_name, revision=_revision(cfg), force_synthetic=False
         )
         if runtime is not None:
-            # Cap for M4 pilot; overwrite planted hint_flips with live paired answers.
-            ds = apply_live_paired_behavioral_gt(
-                ds, runtime, max_items=min(64, len(ds["items"]))
+            # Cap for M4 pilot; live GT for hint / sycophancy / format features.
+            ds = apply_live_behavioral_gt(
+                ds, runtime, max_items=min(96, len(ds["items"]))
             )
-            gt_source = str(ds.get("behavioral_gt_source", "live_paired"))
+            gt_source = str(ds.get("behavioral_gt_source", "live_multi"))
             if ds_path.parent.is_dir():
                 write_json(ds_path, ds)
         elif not force:
@@ -121,6 +146,9 @@ def stage_collect(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
         "fallback_reason": bundle.get("fallback_reason", ""),
         "force_synthetic": force,
         "behavioral_gt_source": gt_source,
+        "behavioral_gt_by_feature": ds.get("behavioral_gt_by_feature"),
+        "holdout_generalization_claim_ok": bool(ds.get("holdout_generalization_claim_ok", False)),
+        "holdout_behavioral_gt_source": ds.get("holdout_behavioral_gt_source"),
     }
     payload = stage_result(task="collect", seed=_seed(cfg), n=len(bundle["meta"]), metrics=metrics)
     payload["is_synthetic"] = bool(bundle.get("is_synthetic", bundle.get("mode") != "model"))
@@ -174,6 +202,24 @@ def stage_fit(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
     }
     metrics["trained_seen_acc"] = trained["metrics"]["trained_seen"]["accuracy_behavioral"]
     metrics["trained_holdout_acc"] = trained["metrics"]["trained_holdout"]["accuracy_behavioral"]
+    holdout_source = (
+        (ds.get("behavioral_gt_by_feature") or {}).get(ds["holdout_feature"])
+        or ds.get("holdout_behavioral_gt_source")
+        or ds.get("behavioral_gt_source")
+        or "planted"
+    )
+    holdout_claim_ok = is_live_gt_source(str(holdout_source))
+    metrics["holdout_behavioral_gt_source"] = holdout_source
+    metrics["holdout_generalization_claim_ok"] = holdout_claim_ok
+    if not holdout_claim_ok:
+        # Gap is still recorded as a diagnostic; claims must not treat it as evidence.
+        metrics["holdout_generalization_gap_claim"] = None
+        metrics["holdout_generalization_note"] = (
+            "Holdout generalization claim gated off: holdout feature lacks live_* "
+            f"behavioral_gt_source (got {holdout_source!r})"
+        )
+    else:
+        metrics["holdout_generalization_gap_claim"] = metrics.get("holdout_generalization_gap")
     payload = stage_result(task="fit", seed=_seed(cfg), n=trained["n_train"], metrics=metrics)
     payload["is_synthetic"] = bool(trained.get("is_synthetic", True))
     write_json(out / "results.json", payload)
@@ -219,6 +265,8 @@ def stage_evaluate(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
                 "honesty_claim_status": "live_regen_failed",
                 "live_regen_errors": [str(exc)],
             }
+    min_live_n = _honesty_min_live_n(cfg)
+    h_seeds = _honesty_seeds(cfg)
     for feat, probe in probes["probes"].items():
         if feat == ds["holdout_feature"]:
             continue
@@ -230,6 +278,9 @@ def stage_evaluate(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
             reports=trained_reports,
             runtime=runtime,
             prompts=ds["items"],
+            honesty_min_live_n=min_live_n,
+            honesty_seeds=h_seeds,
+            claim_patch_robustness=True,
         )
         ablation = ablate_direction(acts, probe, layer=int(probes["layer"]))
         break
@@ -244,6 +295,12 @@ def stage_evaluate(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
         if untrained_path.is_file():
             untrained_acc = score_verbalization(read_json(untrained_path))["accuracy_behavioral"]
             baseline_delta = headline["accuracy_behavioral"] - untrained_acc
+    holdout_source = (
+        (ds.get("behavioral_gt_by_feature") or {}).get(ds["holdout_feature"])
+        or ds.get("holdout_behavioral_gt_source")
+        or ds.get("behavioral_gt_source")
+        or "planted"
+    )
     metrics = {
         "accuracy_behavioral": headline["accuracy_behavioral"],
         "ece": headline["ece"],
@@ -259,10 +316,15 @@ def stage_evaluate(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
         "ablation": ablation,
         "probe_agreement_is_not_evidence": True,
         "behavioral_gt_source": ds.get("behavioral_gt_source", "planted"),
+        "behavioral_gt_by_feature": ds.get("behavioral_gt_by_feature"),
+        "holdout_behavioral_gt_source": holdout_source,
+        "holdout_generalization_claim_ok": is_live_gt_source(str(holdout_source)),
+        "honesty_min_live_n": min_live_n,
         "note": "headline metric is behavioral GT accuracy on locked test split, not probe agreement",
         "honesty_requires_live_regen": True,
         "measured_claims_ok": bool(measured_claims)
-        and causal.get("honesty_claim_status") != "live_regen_failed",
+        and causal.get("honesty_claim_status")
+        not in {"live_regen_failed", "underpowered_live_regen", "patch_robustness_unproven"},
     }
     out = ensure_dir(run_dir / "artifacts" / "evaluate")
     payload = stage_result(task="evaluate", seed=_seed(cfg), n=len(trained_reports), metrics=metrics)
@@ -283,6 +345,12 @@ def stage_report(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
         "causal_sensitivity": pieces.get("evaluate", {}).get("metrics", {}).get("causal", {}).get("causal_sensitivity"),
         "passes_causal_check": pieces.get("evaluate", {}).get("metrics", {}).get("causal", {}).get("passes_causal_check"),
         "passes_honesty_claim": pieces.get("evaluate", {}).get("metrics", {}).get("causal", {}).get("passes_honesty_claim"),
+        "honesty_carrier_position": pieces.get("evaluate", {}).get("metrics", {}).get("causal", {}).get(
+            "honesty_carrier_position"
+        ),
+        "holdout_generalization_claim_ok": pieces.get("fit", {}).get("metrics", {}).get(
+            "holdout_generalization_claim_ok"
+        ),
         "collect_mode": pieces.get("collect", {}).get("metrics", {}).get("mode"),
         "train_mode": pieces.get("fit", {}).get("metrics", {}).get("train_mode"),
     }

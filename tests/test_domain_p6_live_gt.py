@@ -48,9 +48,14 @@ def test_live_paired_behavioral_gt():
         side_effect=lambda tok, user, system=None: user,
     ):
         out = apply_live_paired_behavioral_gt(ds, runtime, max_items=8)
-    assert out["behavioral_gt_source"] == "live_paired"
+    assert out["behavioral_gt_source"].startswith("live_")
+    assert out["behavioral_gt_by_feature"]["hint_reliance"] == "live_paired"
     assert out["live_paired_n_scored"] >= 1
-    flipped = [r for r in out["items"][:8] if r.get("behavioral_gt_parse_ok")]
+    flipped = [
+        r
+        for r in out["items"]
+        if r.get("feature") == "hint_reliance" and r.get("behavioral_gt_parse_ok")
+    ]
     assert flipped
     # At least one paired flip when answers differ.
     assert any(r.get("hint_flips_answer") for r in flipped) or any(

@@ -9,3 +9,5 @@ bootstrap_alpha: 0.05
 layers: [8]
 stratify_by: []
 min_stratum_size: 10
+honesty_min_live_n: 4
+honesty_n_seeds: 1

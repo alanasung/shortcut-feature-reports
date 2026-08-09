@@ -16,3 +16,5 @@ bootstrap_alpha: 0.05
 layers: [2, 4, 6]
 stratify_by: []
 min_stratum_size: 20
+honesty_min_live_n: 8
+honesty_n_seeds: 2

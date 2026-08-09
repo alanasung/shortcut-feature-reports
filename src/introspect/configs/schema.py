@@ -156,6 +156,9 @@ class EvalConfig:
     layers: list[int] = field(default_factory=lambda: [2, 4, 6])
     stratify_by: list[str] = field(default_factory=list)
     min_stratum_size: int = 20
+    # Powered honesty: live regen samples required before passes_honesty_claim.
+    honesty_min_live_n: int = 8
+    honesty_n_seeds: int = 1
 
     def __post_init__(self) -> None:
         if not 0.0 < self.bootstrap_alpha < 1.0:
@@ -166,6 +169,14 @@ class EvalConfig:
             raise ValueError(
                 f"eval.bootstrap_samples must be >= 100 for a usable interval, "
                 f"got {self.bootstrap_samples}"
+            )
+        if self.honesty_min_live_n < 1:
+            raise ValueError(
+                f"eval.honesty_min_live_n must be >= 1, got {self.honesty_min_live_n}"
+            )
+        if self.honesty_n_seeds < 1:
+            raise ValueError(
+                f"eval.honesty_n_seeds must be >= 1, got {self.honesty_n_seeds}"
             )
 
 
