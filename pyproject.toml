@@ -5,11 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "introspect"
 version = "0.1.0"
-description = "Use linear-probe readouts of a model's own residual stream as cheap ground truth, and train the model to verbalize them honestly."
+description = "Probe-grounded introspection training with causal honesty checks."
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
 license = { text = "MIT" }
-authors = [{ name = "Belinda Li" }]
+authors = [{ name = "Alana Sung" }]
 dependencies = [
   "torch==2.6.0",
   "transformers==4.48.0",

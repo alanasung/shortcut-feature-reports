@@ -32,7 +32,7 @@
 ## Reconciliation
 Grok PASS_WITH_NOTES on the measurable core. Codex SERIOUS_PROBLEMS remains on frontier behavioral measurement and live causal regen — recorded as residual scale notes, not missing stages. Domain tests pass (63).
 
-## P5 rigor pass (measured mentor-critical paths)
+## P5 rigor pass (measured prior work-critical paths)
 
 - Live / measured paths preferred; synthetic remains smoke-only with honesty stamps.
 - Claim gating tightened where proxies previously looked like evidence.

@@ -1,7 +1,6 @@
 # Related work
 
-This note situates **Probe-Grounded Introspection Training** against the mentor-linked literature for
-[Introspection Training for Verbalization Activations](https://sparai.org/projects/f26/recNKpeygLfUGyGiz).
+This note situates **Training Models to Verbalize Internal Activations** against related literature.
 
 ## Positioning
 
@@ -25,7 +24,7 @@ is written.
 
 ### Slot A — Primary motivating paper
 
-Summary of the mentor's main citation and the exact claim this repo tests.
+Summary of the main related citation and the exact claim this repo tests.
 
 ### Slot B — Closest prior codebase
 
@@ -44,11 +43,6 @@ Shortcut learning, eval awareness, circular labels, underpowered nulls.
 
 Where this design intentionally diverges from common practice, with the
 falsification condition.
-
-## Mentors and affiliations
-
-- Mentor(s): Belinda Li
-- Affiliation(s): Anthropic
 
 ## Bibliography placeholders
 

@@ -2,7 +2,7 @@
 
 ## Codex (p3)
 - Verdict: MINOR_DRIFT
-- Summary: Strongly faithful to the mentor's probe-grounded introspection-training project; residual ambiguity around held-out features is largely closed by the five-feature design, with slight overemphasis on behavioral vs activation-report fidelity noted.
+- Summary: Strongly faithful to the motivating probe-grounded introspection-training project; residual ambiguity around held-out features is largely closed by the five-feature design, with slight overemphasis on behavioral vs activation-report fidelity noted.
 - Detail: `orchestration/out/align/introspection-verbalization.json`
 
 ## Grok (p3 dual)

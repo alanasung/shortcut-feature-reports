@@ -1,18 +1,15 @@
 <p align="center">
-  <h1 align="center">Probe-Grounded Introspection Training</h1>
-  <p align="center"><strong>Use linear-probe readouts of a model's own residual stream as cheap ground truth, and train the model to verbalize them honestly.</strong></p>
+  <h1 align="center">Training Models to Verbalize Internal Activations</h1>
+  <p align="center"><strong>Use probe-readable residual features as ground truth, and train honest verbal reports with causal checks.</strong></p>
   </p>
 
 ---
 
 ## Overview
 
-This repository implements the pilot and full experimental profiles for
-**Probe-Grounded Introspection Training**. Config, caching, hooks, metrics, ablations, reporting, and CI are built for reproducible local pilots on small open-weight models.
+This repository implements experimental profiles for **Training Models to Verbalize Internal Activations**. Config, caching, hooks, metrics, ablations, reporting, and CI are built for reproducible local pilots on small open-weight models.
 
 Hypothesis (one line): A model can be trained to report the state of an internal feature it was not previously verbalizing, and that ability generalizes to held-out features rather than collapsing into a surface heuristic that mimics the probe without reading the underlying activation.
-
-Mentors: Belinda Li (Anthropic).
 
 ## Motivation
 
@@ -89,13 +86,12 @@ registry and must pass the harness-validation script before any measured claim.
 ## Citation
 
 ```bibtex
-@misc{introspect_pilot,
-  title        = {Probe-Grounded Introspection Training},
-  author       = {Belinda Li},
+@misc{activation_verbalization_pilot,
+  title        = {Training Models to Verbalize Internal Activations},
+  author       = {Alana Sung},
   year         = {2026},
-  howpublished = {Research pilot},
-  note         = {Use linear-probe readouts of a model's own residual stream as cheap ground truth, and train the model to verbalize them honestly.},
-  }
+  howpublished = {Technical report},
+}
 ```
 
 ## License

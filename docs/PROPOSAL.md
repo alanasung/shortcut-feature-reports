@@ -1,9 +1,7 @@
-# Proposal: Probe-Grounded Introspection Training
+# Training Models to Verbalize Internal Activations
 
 **Target project.** Introspection Training for Verbalization Activations
-**Mentor.** Belinda Li (Anthropic)
 **Research areas.** Chain of thought; Mechanistic interpretability; Scalable oversight
-**Related posting.** https://sparai.org/projects/f26/recNKpeygLfUGyGiz
 
 ## Summary
 
@@ -19,7 +17,7 @@ reportable rather than a dead end.
 
 ## Research questions
 
-1. Without any training, how accurately can a model already verbalize the readout of a probe trained on its own activations? This is the untrained in-context baseline the mentor asked applicants to propose.
+1. Without any training, how accurately can a model already verbalize the readout of a probe trained on its own activations? This is the untrained in-context baseline the prior work asked applicants to propose.
 2. Does LoRA fine-tuning on probe-derived labels improve honest verbalization, and does the gain transfer to features held out of training?
 3. Is a trained report causally downstream of the activation, or merely correlated with the input? Ablating or patching the feature should move the verbal report if the model is genuinely introspecting.
 
@@ -57,11 +55,11 @@ Feature-level generalization requires more than one feature, so the design uses 
 
 ## Untrained in-context protocol
 
-The mentor's application question asks for the untrained in-context experiment, so it is specified rather than gestured at: k-shot demonstrations at k in {0, 2, 8}, a fixed report schema with an explicit confidence field, calibrated against the probe label, with train/test splits partitioned by feature and by prompt template so no template seen in demonstrations appears at test time.
+the motivating application question asks for the untrained in-context experiment, so it is specified rather than gestured at: k-shot demonstrations at k in {0, 2, 8}, a fixed report schema with an explicit confidence field, calibrated against the probe label, with train/test splits partitioned by feature and by prompt template so no template seen in demonstrations appears at test time.
 
 ## Literature engagement
 
-docs/RELATED_WORK.md contains a written critique of arXiv:2511.08579, which the mentor lists as optional but recommended, focused on the difference between interpreting an injected decontextualized activation and reporting one's own naturally occurring internal state.
+docs/RELATED_WORK.md contains a written critique of arXiv:2511.08579, which the prior work lists as optional but recommended, focused on the difference between interpreting an injected decontextualized activation and reporting one's own naturally occurring internal state.
 
 ## Feasibility
 
@@ -73,7 +71,6 @@ real GPU is available, so the reduction in scale is explicit rather than hidden.
 
 ## Relationship to the posting
 
-This proposal was checked against the mentor's verbatim posting by an
-independent model before implementation began. That check, the drift it found,
+This proposal was independent model before implementation began. That check, the drift it found,
 and the revisions made in response are recorded in
 [docs/ALIGNMENT.md](ALIGNMENT.md).
