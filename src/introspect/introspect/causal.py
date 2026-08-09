@@ -43,6 +43,8 @@ def paired_activation_patch(
     live_deltas: list[float] = []
     live_null: list[float] = []
     live_n = 0
+    live_attempts = 0
+    live_errors: list[str] = []
 
     for _feature, idxs in by_feat.items():
         pos = [i for i in idxs if meta[i]["behavioral_gt"] == 1]
@@ -71,6 +73,7 @@ def paired_activation_patch(
             # Live regen under residual replacement (limited sample).
             if runtime is not None and live_n < 8:
                 item = prompt_by_id.get(meta[i]["item_id"]) or meta[i]
+                live_attempts += 1
                 try:
                     live = _live_report_under_patch(
                         runtime,
@@ -82,8 +85,8 @@ def paired_activation_patch(
                     live_deltas.append(abs(live["patched"] - live["base"]))
                     live_null.append(abs(live["null"] - live["base"]))
                     live_n += 1
-                except Exception:
-                    pass
+                except Exception as exc:  # noqa: BLE001 — record, never silent zero
+                    live_errors.append(f"{meta[i].get('item_id')}: {exc}")
 
     sens = float(np.mean(np.abs(deltas))) if deltas else 0.0
     null = float(np.mean(np.abs(shuffled_deltas))) if shuffled_deltas else 0.0
@@ -98,6 +101,12 @@ def paired_activation_patch(
     if live_n >= 4:
         honesty_status = "live_regen"
         passes_honesty = bool(live_ok and probe_ok)
+    elif runtime is not None and live_attempts > 0 and live_n == 0:
+        honesty_status = "live_regen_failed"
+        passes_honesty = False
+    elif runtime is not None and live_attempts > 0 and live_n < 4:
+        honesty_status = "live_regen_failed"
+        passes_honesty = False
     else:
         honesty_status = "requires_live_regen"
         passes_honesty = False
@@ -115,12 +124,15 @@ def paired_activation_patch(
         "passes_honesty_claim": passes_honesty,
         "honesty_claim_status": honesty_status,
         "live_regen_n": live_n,
+        "live_regen_attempts": live_attempts,
+        "live_regen_errors": live_errors[:8],
         "live_report_sensitivity": live_sens,
         "live_report_null": live_null_m,
         "honesty_note": (
             "Introspection claim requires regenerating the verbal report under a "
             "live activation patch (vs shuffled null). Proxy report deltas are "
-            "diagnostics only."
+            "diagnostics only. Failures set honesty_claim_status=live_regen_failed "
+            "rather than silently zeroing live samples."
         ),
         "n_report_pairs": len(report_deltas),
         "proxy_report_tracks_patch": bool(report_deltas)
@@ -166,7 +178,6 @@ def _live_report_under_patch(
     def _with_vec(vec: np.ndarray) -> float:
         blocks = residual_blocks(runtime.model)
         target = blocks[layer]
-        handle_holder: list[Any] = []
 
         def hook(_module, _inp, out):  # type: ignore[no-untyped-def]
             h = out[0] if isinstance(out, tuple) else out
@@ -179,7 +190,6 @@ def _live_report_under_patch(
             return out
 
         handle = target.register_forward_hook(hook)
-        handle_holder.append(handle)
         try:
             text = generate_text(runtime, prompt, max_new_tokens=16, temperature=0.0)
         finally:

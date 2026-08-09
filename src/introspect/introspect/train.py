@@ -66,6 +66,8 @@ def _synthetic_lora(
         dataset["items"], accuracy=0.52, seed=seed + 2, baseline="introspective"
     )
 
+    untrained_metrics = score_verbalization(untrained)
+    untrained_metrics["is_synthetic"] = True
     return {
         "mode": "synthetic_lora",
         "is_synthetic": True,
@@ -78,7 +80,8 @@ def _synthetic_lora(
             "probe_train_agreement": probe_agree,
             "trained_seen": score_verbalization(trained_seen),
             "trained_holdout": score_verbalization(trained_hold),
-            "untrained": score_verbalization(untrained),
+            "untrained": untrained_metrics,
+            "untrained_is_synthetic": True,
             "holdout_generalization_gap": (
                 score_verbalization(trained_seen)["accuracy_behavioral"]
                 - score_verbalization(trained_hold)["accuracy_behavioral"]
@@ -107,30 +110,38 @@ def _measured_lora(
     if runtime is None:
         return None
 
+    # Measured untrained baseline BEFORE any LoRA update (never plant ~0.52).
+    untrained = model_verbalize(
+        dataset["items"],
+        runtime=runtime,
+        seed=seed,
+    )
+    for r in untrained:
+        r["baseline"] = "untrained_kshot"
+        r["is_synthetic"] = False
+    untrained_metrics = score_verbalization(untrained)
+    untrained_metrics["is_synthetic"] = False
+
     try:
         import torch
         from peft import LoraConfig, TaskType, get_peft_model
     except Exception:
-        # peft unavailable: still attempt measured untrained + probe-conditioned reports
-        reports = model_verbalize(
-            dataset["items"],
-            runtime=runtime,
-            seed=seed,
-        )
-        seen = [r for r in reports if r["feature"] != holdout_feature]
-        hold = [r for r in reports if r["feature"] == holdout_feature]
+        # peft unavailable: measured untrained doubles as the report set.
+        seen = [r for r in untrained if r["feature"] != holdout_feature]
+        hold = [r for r in untrained if r["feature"] == holdout_feature]
         return {
             "mode": "measured_no_peft",
             "is_synthetic": False,
             "fallback_reason": "peft unavailable; measured generation without LoRA update",
             "n_train": 0,
-            "trained_reports": reports,
-            "untrained_reports": reports,
+            "trained_reports": untrained,
+            "untrained_reports": untrained,
             "metrics": {
                 "probe_train_agreement": float("nan"),
                 "trained_seen": score_verbalization(seen),
                 "trained_holdout": score_verbalization(hold),
-                "untrained": score_verbalization(reports),
+                "untrained": untrained_metrics,
+                "untrained_is_synthetic": False,
                 "holdout_generalization_gap": (
                     score_verbalization(seen)["accuracy_behavioral"]
                     - score_verbalization(hold)["accuracy_behavioral"]
@@ -238,6 +249,7 @@ def _measured_lora(
                     "text": text,
                     "mode": "measured",
                     "parse_ok": parse_ok,
+                    "is_synthetic": False,
                 }
             )
         return outs
@@ -246,9 +258,6 @@ def _measured_lora(
     hold_rows = [r for r in dataset["items"] if r["feature"] == holdout_feature]
     trained_seen = _gen_reports(seen_rows)
     trained_hold = _gen_reports(hold_rows)
-    untrained = synthetic_verbalize(
-        dataset["items"], accuracy=0.52, seed=seed + 2, baseline="introspective"
-    )
     probe_agree = float(np.mean(probe_agree_bits)) if probe_agree_bits else 0.0
     return {
         "mode": "measured_lora",
@@ -264,7 +273,8 @@ def _measured_lora(
             "probe_train_agreement": probe_agree,
             "trained_seen": score_verbalization(trained_seen),
             "trained_holdout": score_verbalization(trained_hold),
-            "untrained": score_verbalization(untrained),
+            "untrained": untrained_metrics,
+            "untrained_is_synthetic": False,
             "holdout_generalization_gap": (
                 score_verbalization(trained_seen)["accuracy_behavioral"]
                 - score_verbalization(trained_hold)["accuracy_behavioral"]

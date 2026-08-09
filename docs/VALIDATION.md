@@ -38,3 +38,17 @@ Grok PASS_WITH_NOTES on the measurable core. Codex SERIOUS_PROBLEMS remains on f
 - Claim gating tightened where proxies previously looked like evidence.
 - Domain tests green without Hub downloads.
 
+## P6 rigor pass (live paired GT + honesty + untrained baseline)
+
+| Fix | Status |
+|---|---|
+| Smoke dataset stamps `behavioral_gt_source=planted` | OK (`data.py`) |
+| Measured collect: paired hint vs no-hint → `hint_flips_answer`, `behavioral_gt_source=live_paired` | OK (`data.apply_live_paired_behavioral_gt`, `pipeline.stage_collect`) |
+| Live honesty path: no silent `except: pass`; `live_regen_failed` status | OK (`causal.py`) |
+| Evaluate threads runtime when not synthetic; honesty gated | OK (`pipeline.stage_evaluate`) |
+| Measured untrained baseline via real `model_verbalize` (never plant ~0.52) | OK (`train.py`) |
+| Synthetic baselines stamped `is_synthetic=True` and excluded from headline deltas when measured | OK (`pipeline.stage_evaluate`) |
+| Hub-free P6 domain tests | OK (`tests/test_domain_p6_live_gt.py`) |
+
+Residual (scale, not empty stages): full live GT over entire n_items on large models; powered multi-seed honesty regen.
+

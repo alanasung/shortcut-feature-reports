@@ -117,11 +117,9 @@ def model_verbalize(
         except Exception:
             text = f"FEATURE={row['feature']}; ACTIVE=no; CONF=0.50"
         parsed = parse_report(text)
-        active = (
-            int(bool(parsed["active"]))
-            if parsed["active"] is not None
-            else int(np.random.default_rng(seed).integers(0, 2))
-        )
+        parse_ok = parsed["active"] is not None
+        # Never impute ground-truth or random labels on parse failure.
+        active = int(bool(parsed["active"])) if parse_ok else -1
         outs.append(
             {
                 "item_id": row["item_id"],
@@ -129,10 +127,12 @@ def model_verbalize(
                 "split": row["split"],
                 "behavioral_gt": row["behavioral_gt"],
                 "report_active": active,
-                "confidence": parsed["confidence"],
+                "confidence": parsed["confidence"] if parse_ok else 0.0,
                 "baseline": "model",
                 "text": text,
                 "mode": "measured",
+                "parse_ok": parse_ok,
+                "is_synthetic": False,
             }
         )
     return outs

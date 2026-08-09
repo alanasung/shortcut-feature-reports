@@ -11,7 +11,7 @@ from omegaconf import DictConfig
 from ._util import ensure_dir, read_json, stage_result, write_json
 from .activations import try_collect_model_activations
 from .causal import ablate_direction, paired_activation_patch
-from .data import FEATURES, build_cued_bias_dataset
+from .data import FEATURES, apply_live_paired_behavioral_gt, build_cued_bias_dataset
 from .probes import fit_feature_probes
 from .train import train_verbalizer
 from .verbalize import score_verbalization, synthetic_verbalize
@@ -62,6 +62,7 @@ def stage_build_dataset(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
         "n_train": sum(1 for r in ds["items"] if r["split"] == "train"),
         "n_test": sum(1 for r in ds["items"] if r["split"] == "test"),
         "force_synthetic": _force_synthetic(cfg),
+        "behavioral_gt_source": ds.get("behavioral_gt_source", "planted"),
     }
     payload = stage_result(task="build_dataset", seed=_seed(cfg), n=ds["n"], metrics=metrics)
     write_json(out / "results.json", payload)
@@ -73,6 +74,24 @@ def stage_collect(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
     ds = read_json(ds_path) if ds_path.is_file() else build_cued_bias_dataset(n_items=_n(cfg), seed=_seed(cfg))
     model_name = str(getattr(cfg.model, "name", "sshleifer/tiny-gpt2"))
     force = _force_synthetic(cfg)
+    gt_source = str(ds.get("behavioral_gt_source", "planted"))
+    if not force:
+        from .model_runtime import try_load_causal_lm
+
+        runtime = try_load_causal_lm(
+            model_name, revision=_revision(cfg), force_synthetic=False
+        )
+        if runtime is not None:
+            # Cap for M4 pilot; overwrite planted hint_flips with live paired answers.
+            ds = apply_live_paired_behavioral_gt(
+                ds, runtime, max_items=min(64, len(ds["items"]))
+            )
+            gt_source = str(ds.get("behavioral_gt_source", "live_paired"))
+            if ds_path.parent.is_dir():
+                write_json(ds_path, ds)
+        elif not force:
+            # Measured path without weights: fail closed (collect will raise below).
+            gt_source = "planted_pending_measured_load"
     try:
         bundle = try_collect_model_activations(
             ds["items"],
@@ -101,6 +120,7 @@ def stage_collect(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
         "chat_template_path": bundle.get("chat_template_path"),
         "fallback_reason": bundle.get("fallback_reason", ""),
         "force_synthetic": force,
+        "behavioral_gt_source": gt_source,
     }
     payload = stage_result(task="collect", seed=_seed(cfg), n=len(bundle["meta"]), metrics=metrics)
     payload["is_synthetic"] = bool(bundle.get("is_synthetic", bundle.get("mode") != "model"))
@@ -165,24 +185,40 @@ def stage_evaluate(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
     acts = read_json(run_dir / "artifacts" / "collect" / "activations.json")
     probes = read_json(run_dir / "artifacts" / "fit" / "probes.json")
     trained_reports = read_json(run_dir / "artifacts" / "fit" / "trained_reports.json")
-    baselines = {
-        name: score_verbalization(synthetic_verbalize(ds["items"], seed=_seed(cfg) + i, baseline=name))
-        for i, name in enumerate(("introspective", "input_only", "metadata_only", "shuffled"))
-    }
+    fit_meta = {}
+    fit_path = run_dir / "artifacts" / "fit" / "train.json"
+    if fit_path.is_file():
+        fit_meta = read_json(fit_path)
+    force = _force_synthetic(cfg)
+    # Synthetic shortcut baselines are always stamped; excluded from headline deltas
+    # when a measured claim is asserted.
+    baselines = {}
+    for i, name in enumerate(("introspective", "input_only", "metadata_only", "shuffled")):
+        scored = score_verbalization(
+            synthetic_verbalize(ds["items"], seed=_seed(cfg) + i, baseline=name)
+        )
+        scored["is_synthetic"] = True
+        baselines[name] = scored
     causal = {"passes_causal_check": False, "passes_honesty_claim": False}
     ablation = {}
     runtime = None
-    force = bool(getattr(cfg, "force_synthetic", False))
-    try:
-        from .model_runtime import try_load_causal_lm
+    if not force:
+        try:
+            from .model_runtime import try_load_causal_lm
 
-        runtime = try_load_causal_lm(
-            str(getattr(cfg.model, "name", "")),
-            revision=str(getattr(cfg.model, "revision", "") or "") or None,
-            force_synthetic=force,
-        )
-    except Exception:
-        runtime = None
+            runtime = try_load_causal_lm(
+                str(getattr(cfg.model, "name", "")),
+                revision=_revision(cfg),
+                force_synthetic=False,
+            )
+        except Exception as exc:  # noqa: BLE001
+            runtime = None
+            causal = {
+                "passes_causal_check": False,
+                "passes_honesty_claim": False,
+                "honesty_claim_status": "live_regen_failed",
+                "live_regen_errors": [str(exc)],
+            }
     for feat, probe in probes["probes"].items():
         if feat == ds["holdout_feature"]:
             continue
@@ -199,6 +235,15 @@ def stage_evaluate(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
         break
     test_reports = [r for r in trained_reports if r.get("split") == "test"] or trained_reports
     headline = score_verbalization(test_reports)
+    measured_claims = (not force) and (not bool(fit_meta.get("is_synthetic", True)))
+    # When measured claims are asserted, synthetic baselines must not drive deltas.
+    baseline_delta = None
+    untrained_acc = None
+    if measured_claims:
+        untrained_path = run_dir / "artifacts" / "fit" / "untrained_reports.json"
+        if untrained_path.is_file():
+            untrained_acc = score_verbalization(read_json(untrained_path))["accuracy_behavioral"]
+            baseline_delta = headline["accuracy_behavioral"] - untrained_acc
     metrics = {
         "accuracy_behavioral": headline["accuracy_behavioral"],
         "ece": headline["ece"],
@@ -206,14 +251,22 @@ def stage_evaluate(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
         "n_eval": headline.get("n"),
         "eval_split": "test",
         "baselines": baselines,
+        "baselines_are_synthetic": True,
+        "exclude_synthetic_baselines_from_headline_deltas": bool(measured_claims),
+        "untrained_accuracy_behavioral": untrained_acc,
+        "trained_minus_untrained": baseline_delta,
         "causal": causal,
         "ablation": ablation,
         "probe_agreement_is_not_evidence": True,
+        "behavioral_gt_source": ds.get("behavioral_gt_source", "planted"),
         "note": "headline metric is behavioral GT accuracy on locked test split, not probe agreement",
         "honesty_requires_live_regen": True,
+        "measured_claims_ok": bool(measured_claims)
+        and causal.get("honesty_claim_status") != "live_regen_failed",
     }
     out = ensure_dir(run_dir / "artifacts" / "evaluate")
     payload = stage_result(task="evaluate", seed=_seed(cfg), n=len(trained_reports), metrics=metrics)
+    payload["is_synthetic"] = bool(force or fit_meta.get("is_synthetic", False))
     write_json(out / "results.json", payload)
     return payload
 
