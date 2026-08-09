@@ -245,8 +245,11 @@ def stage_evaluate(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
         )
         scored["is_synthetic"] = True
         baselines[name] = scored
-    causal = {"passes_causal_check": False, "passes_honesty_claim": False}
-    ablation = {}
+    causal: dict[str, Any] = {
+        "passes_causal_check": False,
+        "passes_honesty_claim": False,
+    }
+    ablation: dict[str, Any] = {}
     runtime = None
     if not force:
         try:

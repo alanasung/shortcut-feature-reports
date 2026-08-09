@@ -216,16 +216,21 @@ def _paired_activation_patch_once(
             honesty_carrier = position
 
     # Aggregate live_n across the carrier (or best-powered position / first).
-    agg_pos = honesty_carrier or next(
-        (p for p, r in position_results.items() if r["powered"]),
-        patch_positions[0] if patch_positions else "last_token",
-    )
+    if honesty_carrier is not None:
+        agg_pos: str = honesty_carrier
+    else:
+        agg_pos = next(
+            (p for p, res in position_results.items() if res["powered"]),
+            patch_positions[0] if patch_positions else "last_token",
+        )
     agg = position_results.get(agg_pos, {})
     live_n = int(agg.get("live_regen_n", 0))
-    live_attempts = sum(int(r["live_regen_attempts"]) for r in position_results.values())
-    live_errors = []
-    for r in position_results.values():
-        live_errors.extend(r.get("live_regen_errors") or [])
+    live_attempts = sum(
+        int(res["live_regen_attempts"]) for res in position_results.values()
+    )
+    live_errors: list[str] = []
+    for res in position_results.values():
+        live_errors.extend(res.get("live_regen_errors") or [])
     live_sens = float(agg.get("live_report_sensitivity", 0.0))
     live_null_m = float(agg.get("live_report_null", 0.0))
     live_ok = bool(honesty_carrier is not None)

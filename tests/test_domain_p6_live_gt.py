@@ -5,7 +5,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-import numpy as np
 
 from introspect.introspect.activations import synthetic_activations
 from introspect.introspect.causal import paired_activation_patch
