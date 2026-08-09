@@ -1,15 +1,15 @@
 <p align="center">
-  <h1 align="center">Training Models to Verbalize Internal Activations</h1>
-  <p align="center"><strong>Use probe-readable residual features as ground truth, and train honest verbal reports with causal checks.</strong></p>
+  <h1 align="center">Teaching Language Models to Report What Probes Can Read</h1>
+  <p align="center"><strong>Ground verbal self-reports in residual-stream features, then require the report to track live activation patches rather than surface cues.</strong></p>
   </p>
 
 ---
 
 ## Overview
 
-This repository implements experimental profiles for **Training Models to Verbalize Internal Activations**. Config, caching, hooks, metrics, ablations, reporting, and CI are built for reproducible local pilots on small open-weight models.
+This repository implements experimental profiles for **Teaching Language Models to Report What Probes Can Read**. Config, caching, hooks, metrics, ablations, reporting, and CI are built for reproducible local pilots on small open-weight models.
 
-Hypothesis (one line): A model can be trained to report the state of an internal feature it was not previously verbalizing, and that ability generalizes to held-out features rather than collapsing into a surface heuristic that mimics the probe without reading the underlying activation.
+Hypothesis (one line): Verbal reports can be trained against cheap internal labels, but only count as introspection if they move when the underlying activation is patched.
 
 ## Motivation
 
@@ -86,8 +86,8 @@ registry and must pass the harness-validation script before any measured claim.
 ## Citation
 
 ```bibtex
-@misc{activation_verbalization_pilot,
-  title        = {Training Models to Verbalize Internal Activations},
+@misc{probe_readable_self_reports,
+  title        = {Teaching Language Models to Report What Probes Can Read},
   author       = {Alana Sung},
   year         = {2026},
   howpublished = {Technical report},

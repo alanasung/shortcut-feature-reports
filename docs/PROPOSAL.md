@@ -1,4 +1,4 @@
-# Training Models to Verbalize Internal Activations
+# Teaching Language Models to Report What Probes Can Read
 
 **Target project.** Introspection Training for Verbalization Activations
 **Research areas.** Chain of thought; Mechanistic interpretability; Scalable oversight

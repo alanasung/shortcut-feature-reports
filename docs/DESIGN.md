@@ -1,14 +1,14 @@
-# Design Document: Probe-Grounded Introspection Training
+# Design Document: Teaching Language Models to Report What Probes Can Read
 
 ## 1. Purpose
 
-This document is the method contract for **Probe-Grounded Introspection Training**. It specifies what is
+This document is the method contract for **Teaching Language Models to Report What Probes Can Read**. It specifies what is
 measured, how measurement is instrumented, which artifacts are produced, and
 which claims are out of scope for the pilot profile.
 
 One-liner: Use linear-probe readouts of a model's own residual stream as cheap ground truth, and train the model to verbalize them honestly.
 
-Hypothesis: A model can be trained to report the state of an internal feature it was not previously verbalizing, and that ability generalizes to held-out features rather than collapsing into a surface heuristic that mimics the probe without reading the underlying activation.
+Hypothesis: Verbal reports can be trained against cheap internal labels, but only count as introspection if they move when the underlying activation is patched.
 
 ## 2. Scope
 

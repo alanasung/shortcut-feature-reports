@@ -1,6 +1,6 @@
 # Related work
 
-This note situates **Training Models to Verbalize Internal Activations** against related literature.
+This note situates **Teaching Language Models to Report What Probes Can Read** against related literature.
 
 ## Positioning
 

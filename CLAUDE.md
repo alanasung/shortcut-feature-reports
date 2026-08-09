@@ -4,7 +4,7 @@ Context for coding agents working in this repository.
 
 ## What this is
 
-Research implementation of "Training Models to Verbalize Internal Activations".
+Research implementation of "Teaching Language Models to Report What Probes Can Read".
 
 ## Hard constraints
 

@@ -3,7 +3,7 @@
 See [CLAUDE.md](CLAUDE.md) for the full build instructions; this file exists so
 that agents which look for `AGENTS.md` find the same context.
 
-Project: Probe-Grounded Introspection Training
+Project: Teaching Language Models to Report What Probes Can Read
 Package: `src/introspect`
 Entry point: `python -m introspect --help`
 

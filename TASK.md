@@ -1,4 +1,4 @@
-# TASK.md — Probe-Grounded Introspection Training
+# TASK.md — Teaching Language Models to Report What Probes Can Read
 
 ID convention: `I##` infrastructure, `D##` data, `M##` modelling / hooks,
 `E##` experiments, `A##` ablations, `S##` sweeps, `R##` reporting.
