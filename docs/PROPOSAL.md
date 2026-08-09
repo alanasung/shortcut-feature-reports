@@ -3,7 +3,7 @@
 **Target project.** Introspection Training for Verbalization Activations
 **Mentor.** Belinda Li (Anthropic)
 **Research areas.** Chain of thought; Mechanistic interpretability; Scalable oversight
-**Posting.** https://sparai.org/projects/f26/recNKpeygLfUGyGiz
+**Related posting.** https://sparai.org/projects/f26/recNKpeygLfUGyGiz
 
 ## Summary
 

@@ -1,6 +1,8 @@
 """Feature-tagged enrichment for introspection items."""
 from __future__ import annotations
+
 from typing import Any
+
 FEATURES = ["hint_reliance","answer_certainty","format_compliance","planted_topic","sycophantic_agreement"]
 
 def enrich_items(items: list[dict[str, Any]], cfg) -> list[dict[str, Any]]:

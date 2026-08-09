@@ -1,5 +1,4 @@
 from types import SimpleNamespace
-from pathlib import Path
 from introspect.stages import STAGES
 import json
 

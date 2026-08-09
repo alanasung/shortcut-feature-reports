@@ -1,17 +1,14 @@
 <p align="center">
   <h1 align="center">Probe-Grounded Introspection Training</h1>
   <p align="center"><strong>Use linear-probe readouts of a model's own residual stream as cheap ground truth, and train the model to verbalize them honestly.</strong></p>
-  <p align="center">SPAR Fall 2026 · <a href="https://sparai.org/projects/f26/recNKpeygLfUGyGiz">Introspection Training for Verbalization Activations</a></p>
-</p>
+  </p>
 
 ---
 
 ## Overview
 
 This repository implements the pilot and full experimental profiles for
-**Probe-Grounded Introspection Training**. The shared engineering spine (config, caching, hooks, metrics,
-ablations, reporting, CI) is generated from a single template so all SPAR Fall
-2026 repos stay aligned on reproducibility.
+**Probe-Grounded Introspection Training**. Config, caching, hooks, metrics, ablations, reporting, and CI are built for reproducible local pilots on small open-weight models.
 
 Hypothesis (one line): A model can be trained to report the state of an internal feature it was not previously verbalizing, and that ability generalizes to held-out features rather than collapsing into a surface heuristic that mimics the probe without reading the underlying activation.
 
@@ -87,20 +84,18 @@ registry and must pass the harness-validation script before any measured claim.
 
 ## Related work
 
-- SPAR Fall 2026 project posting: https://sparai.org/projects/f26/recNKpeygLfUGyGiz
 - Complexity bar: Critical Data PRIMED-AI / RecursiveJEPA engineering standard
 
 ## Citation
 
 ```bibtex
-@misc{introspect_spar_f26,
+@misc{introspect_pilot,
   title        = {Probe-Grounded Introspection Training},
   author       = {Belinda Li},
   year         = {2026},
-  howpublished = {SPAR Fall 2026},
+  howpublished = {Research pilot},
   note         = {Use linear-probe readouts of a model's own residual stream as cheap ground truth, and train the model to verbalize them honestly.},
-  url          = {https://sparai.org/projects/f26/recNKpeygLfUGyGiz}
-}
+  }
 ```
 
 ## License

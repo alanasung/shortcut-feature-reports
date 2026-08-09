@@ -96,7 +96,7 @@ def try_collect_model_activations(
     handles = []
 
     def make_hook(key: str):
-        def _hook(_module, _inp, out):  # type: ignore[no-untyped-def]
+        def _hook(_module, _inp, out):
             tensor = out[0] if isinstance(out, tuple) else out
             vec = tensor[0, -1].detach().float().cpu().numpy()
             captured[key].append(vec.tolist())

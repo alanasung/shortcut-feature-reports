@@ -4,8 +4,7 @@ Context for coding agents working in this repository.
 
 ## What this is
 
-A pilot research implementation of "Probe-Grounded Introspection Training" targeting the SPAR
-Fall 2026 project "Introspection Training for Verbalization Activations" (mentor: Belinda Li,
+A pilot research implementation of "Probe-Grounded Introspection Training" for the research agenda "Introspection Training for Verbalization Activations" (mentor: Belinda Li,
 Anthropic).
 
 ## Hard constraints

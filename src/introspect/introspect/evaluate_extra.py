@@ -1,6 +1,8 @@
 """Introspection-specific metrics: behavioral GT agreement + causal sensitivity proxy."""
 from __future__ import annotations
+
 import numpy as np
+
 
 def evaluate_extra(cfg, run_dir, y, prob):
     # agreement vs behavioral labels (here y) is a training diagnostic only
