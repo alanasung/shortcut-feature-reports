@@ -171,6 +171,18 @@ def stage_evaluate(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
     }
     causal = {"passes_causal_check": False, "passes_honesty_claim": False}
     ablation = {}
+    runtime = None
+    force = bool(getattr(cfg, "force_synthetic", False))
+    try:
+        from .model_runtime import try_load_causal_lm
+
+        runtime = try_load_causal_lm(
+            str(getattr(cfg.model, "name", "")),
+            revision=str(getattr(cfg.model, "revision", "") or "") or None,
+            force_synthetic=force,
+        )
+    except Exception:
+        runtime = None
     for feat, probe in probes["probes"].items():
         if feat == ds["holdout_feature"]:
             continue
@@ -180,6 +192,8 @@ def stage_evaluate(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
             layer=int(probes["layer"]),
             seed=_seed(cfg),
             reports=trained_reports,
+            runtime=runtime,
+            prompts=ds["items"],
         )
         ablation = ablate_direction(acts, probe, layer=int(probes["layer"]))
         break

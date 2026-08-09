@@ -82,6 +82,14 @@ def format_chat(tokenizer: Any, user: str, *, system: str | None = None) -> str:
     return f"User: {user}\nAssistant:"
 
 
+def residual_blocks(model: Any) -> Any:
+    if hasattr(model, "model") and hasattr(model.model, "layers"):
+        return model.model.layers
+    if hasattr(model, "transformer") and hasattr(model.transformer, "h"):
+        return model.transformer.h
+    raise AttributeError("unsupported model layout for residual hooks")
+
+
 def generate_text(
     runtime: RuntimeModel,
     prompt: str,
