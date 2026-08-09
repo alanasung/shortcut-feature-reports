@@ -7,9 +7,10 @@ def cfg(tmp):
     return SimpleNamespace(
         run=SimpleNamespace(seed=1, profile="pilot"),
         data=SimpleNamespace(n_items=45, name="synthetic"),
-        model=SimpleNamespace(name="does-not-exist/model", require_weights=False),
+        force_synthetic=True,
+        model=SimpleNamespace(name="does-not-exist/model", require_weights=False, revision=None, use_chat_template=True),
         eval=SimpleNamespace(layers=[1, 2, 3]),
-        experiment=SimpleNamespace(holdout_feature="format_compliance"),
+        experiment=SimpleNamespace(name="smoke", holdout_feature="format_compliance"),
         paths=SimpleNamespace(results=str(tmp / "results")),
     )
 

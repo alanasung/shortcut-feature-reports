@@ -17,8 +17,17 @@ def test_meta_ids():
     b = synthetic_activations(ds["items"], layers=[1], dim=8, seed=1)
     assert [m["item_id"] for m in b["meta"]] == [r["item_id"] for r in ds["items"]]
 
-def test_missing_weights_message():
+def test_missing_weights_fail_closed():
     ds = build_cued_bias_dataset(n_items=40, seed=0)
-    b = try_collect_model_activations(ds["items"], model_name="definitely/missing-weights-xyz", layers=[0], force_synthetic=False)
-    assert b["mode"] == "synthetic"
-    assert "fallback_reason" in b or True
+    try:
+        try_collect_model_activations(
+            ds["items"],
+            model_name="definitely/missing-weights-xyz",
+            layers=[0],
+            force_synthetic=False,
+        )
+        raised = False
+    except RuntimeError as exc:
+        raised = True
+        assert "refused synthetic" in str(exc).lower() or "could not load" in str(exc).lower()
+    assert raised

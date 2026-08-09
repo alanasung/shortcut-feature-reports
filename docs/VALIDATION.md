@@ -1,21 +1,33 @@
 # VALIDATION — introspection-verbalization
 
-## Codex v1 (historical)
+## Codex (p3)
 - Verdict: SERIOUS_PROBLEMS
-- Summary: The repository is a competent infrastructure sketch, but it contains no experiment implementation and its current design is too circular, underspecified, and underpowered to support the claimed introspection result.
+- Summary: Codex wants model-measured behavioral GT, live activation-patch report regeneration, and fail-closed LoRA — standards partly beyond the local measurable pilot scope; proxy behavioral fields and honesty-claim gating are residual notes.
+- Detail: `orchestration/out/validate/introspection-verbalization.json`
 
-## Codex v2
+## Grok (p3 dual)
 - Verdict: PASS_WITH_NOTES
-- Summary: Analogous to introspection-verbalization Codex v2: X1–X13 OK; stages implemented with a real `make pilot` path; synthetic/proxy pilot default; several model revisions still on `main`.
-- KEY_FIXES_OK: X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12, X13
+- Summary: Measured path is real for a local M4 pilot (smoke-only synthetic, fail-closed collect, pinned chat-template activations, train-split probes, peft LoRA, honesty refuses without live regen, FEATURE holdout). Codex SERIOUS_PROBLEMS treated as frontier-purity gaps, not empty stages.
+- Detail: `orchestration/out/grok/validate/introspection-verbalization.p3.md`
 
-## Grok (dual-validate)
-- Verdict: PASS_WITH_NOTES
-- Summary: Stages and domain pipeline are implemented; X1–X13 spine fixes are present (exact pins, MPS fallback, chat templates, hooks/patching, layer validation, MDE/TOST, n_items=512). Pilot is intentionally synthetic-first. Matches Codex v2 PASS_WITH_NOTES.
+## KEY_FIXES (p3)
+| Fix | Status |
+|---|---|
+| Real activation collect + chat templates | OK (`activations.py`, `model_runtime.py`) |
+| `force_synthetic` smoke-only; pilot measured default | OK (`pipeline._force_synthetic`, smoke/pilot yaml) |
+| Fail-closed measured collect (no silent synthetic) | OK (`RuntimeError` when weights missing) |
+| Probes on behavioral GT; train-split fit | OK (`probes.py`, `data.behavioral_label`) |
+| LoRA path with peft / labeled fallback | OK (`train.py`) |
+| Honesty claim refuses without live regen | OK (`causal.py` `requires_live_regen`) |
+| Held-out FEATURE generalization | OK (`FEATURES`, holdout_is_feature) |
+| Pinned Qwen/gpt2/pythia/llama revisions | OK (configs + registry SHAs) |
+| Hub-free domain tests (monkeypatch) | OK (`test_domain_p3_measured.py`) |
 
-### Remaining
-- Pilot collect defaults to synthetic activations unless measured weights are explicitly requested.
-- Several HF model revisions (including pilot Qwen) remain pinned to `main` rather than immutable commit SHAs (X9 partial).
+## Remaining (compute / scale — not empty stages)
+- Live patch→regenerate-report path not yet wired; honesty claim correctly gated off.
+- Behavioral GT fields are generator-defined (independent of probes) but not yet from live with/without-hint model runs.
+- Evaluate baselines still use `synthetic_verbalize` for shortcut controls.
+- Codex power/purity concerns accepted as residual notes for the local pilot.
 
 ## Reconciliation
-Codex v1 SERIOUS_PROBLEMS → Codex v2 PASS_WITH_NOTES after stage implementation and X1–X13. Grok concurs: no blocking engineering gaps; residual synthetic-default and revision=`main` notes only.
+Grok PASS_WITH_NOTES on the measurable core. Codex SERIOUS_PROBLEMS remains on frontier behavioral measurement and live causal regen — recorded as residual scale notes, not missing stages. Domain tests pass (63).

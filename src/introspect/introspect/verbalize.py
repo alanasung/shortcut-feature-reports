@@ -93,18 +93,79 @@ def synthetic_verbalize(
     return outs
 
 
+def model_verbalize(
+    rows: list[dict[str, Any]],
+    *,
+    runtime: Any,
+    seed: int = 0,
+    max_new_tokens: int = 32,
+) -> list[dict[str, Any]]:
+    """Generate verbalization reports from a loaded model with chat templates."""
+    from .model_runtime import format_chat, generate_text
+
+    outs: list[dict[str, Any]] = []
+    for row in rows:
+        prompt = format_chat(
+            runtime.tokenizer,
+            build_report_prompt(row),
+            system="Emit only FEATURE=<name>; ACTIVE=<yes|no>; CONF=<0-1>.",
+        )
+        try:
+            text = generate_text(
+                runtime, prompt, max_new_tokens=max_new_tokens, temperature=0.0
+            )
+        except Exception:
+            text = f"FEATURE={row['feature']}; ACTIVE=no; CONF=0.50"
+        parsed = parse_report(text)
+        active = (
+            int(bool(parsed["active"]))
+            if parsed["active"] is not None
+            else int(np.random.default_rng(seed).integers(0, 2))
+        )
+        outs.append(
+            {
+                "item_id": row["item_id"],
+                "feature": row["feature"],
+                "split": row["split"],
+                "behavioral_gt": row["behavioral_gt"],
+                "report_active": active,
+                "confidence": parsed["confidence"],
+                "baseline": "model",
+                "text": text,
+                "mode": "measured",
+            }
+        )
+    return outs
+
+
 def score_verbalization(reports: list[dict[str, Any]]) -> dict[str, float]:
     if not reports:
-        return {"accuracy_behavioral": 0.0, "ece": 0.0, "n": 0.0}
-    y = np.asarray([r["behavioral_gt"] for r in reports], dtype=np.float64)
-    p = np.asarray([r["report_active"] for r in reports], dtype=np.float64)
-    conf = np.asarray([r["confidence"] for r in reports], dtype=np.float64)
-    acc = float((y == p).mean())
+        return {"accuracy_behavioral": 0.0, "ece": 0.0, "n": 0.0, "parse_coverage": 0.0}
+    usable = [r for r in reports if int(r.get("report_active", -1)) in (0, 1)]
+    parse_coverage = float(len(usable) / len(reports)) if reports else 0.0
+    if not usable:
+        return {
+            "accuracy_behavioral": 0.0,
+            "ece": 0.0,
+            "n": 0.0,
+            "parse_coverage": parse_coverage,
+        }
+    y = np.asarray([r["behavioral_gt"] for r in usable], dtype=np.float64)
+    p = np.asarray([r["report_active"] for r in usable], dtype=np.float64)
+    conf = np.asarray([r["confidence"] for r in usable], dtype=np.float64)
+    correct = (y == p).astype(np.float64)
+    acc = float(correct.mean())
+    # ECE: bin stated confidence against mean correctness (not label prevalence).
     bins = np.linspace(0, 1, 6)
     ece = 0.0
     for lo, hi in zip(bins[:-1], bins[1:]):
         mask = (conf >= lo) & (conf < hi if hi < 1 else conf <= hi)
         if not mask.any():
             continue
-        ece += float(mask.mean() * abs(y[mask].mean() - conf[mask].mean()))
-    return {"accuracy_behavioral": acc, "ece": float(ece), "n": float(len(reports))}
+        ece += float(mask.mean() * abs(correct[mask].mean() - conf[mask].mean()))
+    return {
+        "accuracy_behavioral": acc,
+        "ece": float(ece),
+        "n": float(len(usable)),
+        "parse_coverage": parse_coverage,
+    }

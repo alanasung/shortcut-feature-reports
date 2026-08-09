@@ -22,5 +22,8 @@ experiment:
 model:
   batch_size: 8
 
+# Measured activations + LoRA when weights load; synthetic only as labeled fallback.
+force_synthetic: false
+
 cache:
   namespace: pilot

@@ -1,10 +1,12 @@
-"""Residual-stream activation capture with a synthetic fallback."""
+"""Residual-stream activation capture with a synthetic fallback (smoke-only)."""
 
 from __future__ import annotations
 
 from typing import Any
 
 import numpy as np
+
+from .model_runtime import format_chat, try_load_causal_lm
 
 
 def synthetic_activations(
@@ -43,6 +45,7 @@ def synthetic_activations(
         "activations": layer_mats,
         "meta": meta,
         "seed": seed,
+        "is_synthetic": True,
     }
 
 
@@ -53,34 +56,35 @@ def try_collect_model_activations(
     layers: list[int],
     seed: int = 0,
     force_synthetic: bool = False,
+    revision: str | None = None,
+    use_chat_template: bool = True,
 ) -> dict[str, Any]:
-    """Attempt real capture; fall back to synthetic with an actionable message."""
+    """Attempt real capture; fall back to synthetic with an actionable message.
+
+    ``force_synthetic`` is reserved for smoke/plumbing. Pilot defaults try a
+    measured load with chat templates and a pinned revision when available.
+    """
     if force_synthetic:
         out = synthetic_activations(items, layers=layers, seed=seed)
         out["fallback_reason"] = "force_synthetic=True"
         return out
-    try:
-        import torch
-        from transformers import AutoModelForCausalLM, AutoTokenizer
-    except Exception as exc:  # pragma: no cover
-        out = synthetic_activations(items, layers=layers, seed=seed)
-        out["fallback_reason"] = f"transformers/torch unavailable: {exc}"
-        return out
 
-    try:
-        tok = AutoTokenizer.from_pretrained(model_name)
-        if tok.pad_token is None:
-            tok.pad_token = tok.eos_token
-        model = AutoModelForCausalLM.from_pretrained(model_name)
-        model.eval()
-    except (OSError, ValueError, RuntimeError) as exc:
-        out = synthetic_activations(items, layers=layers, seed=seed)
-        out["fallback_reason"] = (
-            f"Could not load weights for {model_name!r}: {exc}. "
-            "Using synthetic activations. Download the model or set data=synthetic."
+    runtime = try_load_causal_lm(
+        model_name, revision=revision, force_synthetic=False
+    )
+    if runtime is None:
+        # Measured profiles must not silently finish with planted activations.
+        # Callers that want smoke plumbing must pass force_synthetic=True.
+        raise RuntimeError(
+            f"Could not load weights for {model_name!r} revision={revision!r}. "
+            "Measured collect refused synthetic substitution. "
+            "Download the model, or set force_synthetic=true for smoke only."
         )
-        return out
 
+    import torch
+
+    model = runtime.model
+    tok = runtime.tokenizer
     n_layers = int(
         getattr(model.config, "num_hidden_layers", getattr(model.config, "n_layer", 0))
     )
@@ -104,9 +108,19 @@ def try_collect_model_activations(
         handles.append(blocks[layer].register_forward_hook(make_hook(str(layer))))
 
     meta: list[dict[str, Any]] = []
+    chat_path = "raw"
     with torch.no_grad():
         for i, row in enumerate(items):
-            enc = tok(row["prompt"], return_tensors="pt")
+            prompt = row["prompt"]
+            if use_chat_template:
+                prompt = format_chat(
+                    tok,
+                    prompt,
+                    system="Answer the multiple-choice item carefully.",
+                )
+                chat_path = "chat_template" if getattr(tok, "chat_template", None) else "chat_template_unavailable"
+            enc = tok(prompt, return_tensors="pt")
+            enc = {k: v.to(runtime.device) for k, v in enc.items()}
             model(**enc)
             meta.append(
                 {
@@ -123,9 +137,13 @@ def try_collect_model_activations(
     return {
         "mode": "model",
         "model_name": model_name,
+        "revision": runtime.revision,
         "layers": layers,
         "dim": len(next(iter(captured.values()))[0]) if items else 0,
         "activations": captured,
         "meta": meta,
         "seed": seed,
+        "is_synthetic": False,
+        "chat_template_path": chat_path,
+        "notes": list(runtime.notes),
     }

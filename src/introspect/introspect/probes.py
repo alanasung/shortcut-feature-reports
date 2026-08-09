@@ -54,7 +54,10 @@ def validate_probe_against_behavior(
     seed: int = 0,
     min_auroc: float = 0.6,
 ) -> dict[str, Any]:
-    X, y, _ = _xy(bundle, feature=feature, layer=layer)
+    # Train-only validation to avoid selection leakage into the locked test set.
+    X, y, _ = _xy(bundle, feature=feature, layer=layer, split="train")
+    if len(y) < 8:
+        X, y, _ = _xy(bundle, feature=feature, layer=layer)
     if len(y) < 8 or len(np.unique(y)) < 2:
         return {
             "feature": feature,
@@ -135,18 +138,19 @@ def fit_feature_probes(
         if not val["accepted"]:
             dropped.append(feature)
             continue
-        if feature == holdout_feature:
-            X, y, _ = _xy(bundle, feature=feature, layer=layer, split="test")
-        else:
-            X, y, _ = _xy(bundle, feature=feature, layer=layer, split="train")
-            if len(y) < 4:
-                X, y, _ = _xy(bundle, feature=feature, layer=layer)
+        # Held-out FEATURE: fit a diagnostic probe on that feature's train split only
+        # (never the locked test split). Non-holdout probes train on train split.
+        X, y, _ = _xy(bundle, feature=feature, layer=layer, split="train")
+        if len(y) < 4:
+            dropped.append(feature)
+            continue
         clf = fit_probe(X, y, seed=seed)
         probes[feature] = {
             "coef": np.asarray(clf.coef_, dtype=float).tolist(),
             "intercept": float(np.asarray(clf.intercept_).reshape(-1)[0]),
             "layer": layer,
-            "trained_on_holdout": feature == holdout_feature,
+            "trained_on_holdout_feature": feature == holdout_feature,
+            "fit_split": "train",
         }
     return {
         "layer": layer,
@@ -154,7 +158,10 @@ def fit_feature_probes(
         "validations": validations,
         "dropped_features": dropped,
         "holdout_feature": holdout_feature,
-        "note": "probe labels are training diagnostics; behavioral_gt is evaluation GT",
+        "note": (
+            "probe labels are training diagnostics; behavioral_gt is evaluation GT; "
+            "probes fit on train split only"
+        ),
     }
 
 

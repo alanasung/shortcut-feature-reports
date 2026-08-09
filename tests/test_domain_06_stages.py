@@ -3,7 +3,7 @@ from introspect.stages import STAGES
 import json
 
 def cfg(tmp):
-    return SimpleNamespace(run=SimpleNamespace(seed=0, profile="smoke"), data=SimpleNamespace(n_items=45, name="synthetic"), model=SimpleNamespace(name="no/model", require_weights=False), eval=SimpleNamespace(layers=[1,2]), experiment=SimpleNamespace(holdout_feature="sycophantic_agreement"), paths=SimpleNamespace(results=str(tmp/"results")))
+    return SimpleNamespace(force_synthetic=True, run=SimpleNamespace(seed=0, profile="smoke"), data=SimpleNamespace(n_items=45, name="synthetic"), model=SimpleNamespace(name="no/model", require_weights=False, revision=None, use_chat_template=True), eval=SimpleNamespace(layers=[1,2]), experiment=SimpleNamespace(name="smoke", holdout_feature="sycophantic_agreement"), paths=SimpleNamespace(results=str(tmp/"results")))
 
 def test_registry():
     assert set(STAGES) == {"build_dataset", "collect", "fit", "evaluate", "report"}

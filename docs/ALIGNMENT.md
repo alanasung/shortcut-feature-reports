@@ -1,15 +1,16 @@
 # ALIGNMENT — introspection-verbalization
 
-## Codex GPT-5 Sol
-- Verdict: ALIGNED
-- Summary: The idea is directly aligned with the mentor's proposed probe-grounded introspection training and causal evaluation agenda, with only an unresolved cross-feature-generalization claim and incomplete application-level specification.
+## Codex (p3)
+- Verdict: MINOR_DRIFT
+- Summary: Strongly faithful to the mentor's probe-grounded introspection-training project; residual ambiguity around held-out features is largely closed by the five-feature design, with slight overemphasis on behavioral vs activation-report fidelity noted.
+- Detail: `orchestration/out/align/introspection-verbalization.json`
 
-## Grok
-- Verdict: ALIGNED
-- Summary: Faithful probe-supervised introspection training with the mentor’s in-context baseline, Turpin-style setting, and causal checks.
-- Detail: see `orchestration/out/grok/align/introspection-verbalization.md` and `introspection-verbalization.json`.
+## Grok (p3 dual)
+- Verdict: MINOR_DRIFT
+- Summary: P3 measured collect, behavioral-probe validation, feature holdout, pinned revisions, and smoke-only synthetic are in place; residual drift is missing live patch→regen for the honesty claim plus still-synthetic evaluate/untrained baselines.
+- Detail: `orchestration/out/grok/align/introspection-verbalization.p3.md`
 
 ## Reconciliation
-Codex and Grok both ALIGNED. Proceed; optional polish on held-out feature generalization claims.
+Codex and Grok both MINOR_DRIFT on operational residuals (live causal regen; planted behavioral fields), not topical drift. Proceed.
 
 Operating judgment: proceed.

@@ -32,6 +32,22 @@ def _layers(cfg: DictConfig) -> list[int]:
     return [int(x) for x in layers]
 
 
+def _force_synthetic(cfg: Any) -> bool:
+    """Synthetic is smoke-only. Pilot/full try measured weights by default."""
+    if bool(getattr(cfg, "force_synthetic", False)):
+        return True
+    # Legacy: data=synthetic alone is not enough to force if pilot requested measured.
+    exp_name = str(getattr(getattr(cfg, "experiment", object()), "name", "")).lower()
+    if exp_name == "smoke":
+        return True
+    return False
+
+
+def _revision(cfg: Any) -> str | None:
+    rev = getattr(getattr(cfg, "model", cfg), "revision", None)
+    return str(rev) if rev else None
+
+
 def stage_build_dataset(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
     holdout = str(getattr(getattr(cfg, "experiment", object()), "holdout_feature", "sycophantic_agreement"))
     if holdout not in FEATURES:
@@ -42,8 +58,10 @@ def stage_build_dataset(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
     metrics = {
         "n_features": len(FEATURES),
         "holdout_feature": holdout,
+        "holdout_is_feature": True,
         "n_train": sum(1 for r in ds["items"] if r["split"] == "train"),
         "n_test": sum(1 for r in ds["items"] if r["split"] == "test"),
+        "force_synthetic": _force_synthetic(cfg),
     }
     payload = stage_result(task="build_dataset", seed=_seed(cfg), n=ds["n"], metrics=metrics)
     write_json(out / "results.json", payload)
@@ -54,26 +72,38 @@ def stage_collect(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
     ds_path = run_dir / "artifacts" / "dataset" / "dataset.json"
     ds = read_json(ds_path) if ds_path.is_file() else build_cued_bias_dataset(n_items=_n(cfg), seed=_seed(cfg))
     model_name = str(getattr(cfg.model, "name", "sshleifer/tiny-gpt2"))
-    force = str(getattr(cfg.data, "name", "synthetic")) == "synthetic" or str(getattr(cfg.run, "profile", "")) in {"smoke", "pilot"}
-    # Pilot defaults to synthetic unless explicitly requesting measured weights.
-    force = force or not bool(getattr(cfg.model, "require_weights", False))
-    bundle = try_collect_model_activations(
-        ds["items"],
-        model_name=model_name,
-        layers=_layers(cfg),
-        seed=_seed(cfg),
-        force_synthetic=force,
-    )
+    force = _force_synthetic(cfg)
+    try:
+        bundle = try_collect_model_activations(
+            ds["items"],
+            model_name=model_name,
+            layers=_layers(cfg),
+            seed=_seed(cfg),
+            force_synthetic=force,
+            revision=_revision(cfg),
+            use_chat_template=bool(getattr(cfg.model, "use_chat_template", True)),
+        )
+    except RuntimeError as exc:
+        if force:
+            from .activations import synthetic_activations
+
+            bundle = synthetic_activations(ds["items"], layers=_layers(cfg), seed=_seed(cfg))
+            bundle["fallback_reason"] = str(exc)
+        else:
+            raise
     out = ensure_dir(run_dir / "artifacts" / "collect")
     write_json(out / "activations.json", bundle)
     metrics = {
         "mode": bundle.get("mode"),
         "dim": bundle.get("dim"),
         "layers": bundle.get("layers"),
+        "revision": bundle.get("revision"),
+        "chat_template_path": bundle.get("chat_template_path"),
         "fallback_reason": bundle.get("fallback_reason", ""),
+        "force_synthetic": force,
     }
     payload = stage_result(task="collect", seed=_seed(cfg), n=len(bundle["meta"]), metrics=metrics)
-    payload["is_synthetic"] = bundle.get("mode") != "model"
+    payload["is_synthetic"] = bool(bundle.get("is_synthetic", bundle.get("mode") != "model"))
     write_json(out / "results.json", payload)
     return payload
 
@@ -90,23 +120,42 @@ def stage_fit(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
         seed=_seed(cfg),
         min_auroc=0.55,
     )
+    force = _force_synthetic(cfg)
     trained = train_verbalizer(
-        ds, probes, acts, seed=_seed(cfg), holdout_feature=ds["holdout_feature"]
+        ds,
+        probes,
+        acts,
+        seed=_seed(cfg),
+        holdout_feature=ds["holdout_feature"],
+        model_name=str(getattr(cfg.model, "name", "")) or None,
+        revision=_revision(cfg),
+        force_synthetic=force,
     )
     out = ensure_dir(run_dir / "artifacts" / "fit")
     write_json(out / "probes.json", probes)
-    write_json(out / "train.json", {"metrics": trained["metrics"], "mode": trained["mode"], "n_train": trained["n_train"]})
+    write_json(
+        out / "train.json",
+        {
+            "metrics": trained["metrics"],
+            "mode": trained["mode"],
+            "n_train": trained["n_train"],
+            "is_synthetic": trained.get("is_synthetic", True),
+            "fallback_reason": trained.get("fallback_reason", ""),
+        },
+    )
     write_json(out / "trained_reports.json", trained["trained_reports"])
     write_json(out / "untrained_reports.json", trained["untrained_reports"])
     metrics = {
         "n_probes": len(probes["probes"]),
         "dropped_features": probes["dropped_features"],
+        "train_mode": trained["mode"],
+        "is_synthetic": trained.get("is_synthetic", True),
         **trained["metrics"],
     }
-    # Flatten nested for reporting convenience
     metrics["trained_seen_acc"] = trained["metrics"]["trained_seen"]["accuracy_behavioral"]
     metrics["trained_holdout_acc"] = trained["metrics"]["trained_holdout"]["accuracy_behavioral"]
     payload = stage_result(task="fit", seed=_seed(cfg), n=trained["n_train"], metrics=metrics)
+    payload["is_synthetic"] = bool(trained.get("is_synthetic", True))
     write_json(out / "results.json", payload)
     return payload
 
@@ -120,24 +169,34 @@ def stage_evaluate(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
         name: score_verbalization(synthetic_verbalize(ds["items"], seed=_seed(cfg) + i, baseline=name))
         for i, name in enumerate(("introspective", "input_only", "metadata_only", "shuffled"))
     }
-    # Causal check on first accepted non-holdout probe
-    causal = {"passes_causal_check": False}
+    causal = {"passes_causal_check": False, "passes_honesty_claim": False}
     ablation = {}
     for feat, probe in probes["probes"].items():
         if feat == ds["holdout_feature"]:
             continue
-        causal = paired_activation_patch(acts, probe, layer=int(probes["layer"]), seed=_seed(cfg))
+        causal = paired_activation_patch(
+            acts,
+            probe,
+            layer=int(probes["layer"]),
+            seed=_seed(cfg),
+            reports=trained_reports,
+        )
         ablation = ablate_direction(acts, probe, layer=int(probes["layer"]))
         break
-    headline = score_verbalization(trained_reports)
+    test_reports = [r for r in trained_reports if r.get("split") == "test"] or trained_reports
+    headline = score_verbalization(test_reports)
     metrics = {
         "accuracy_behavioral": headline["accuracy_behavioral"],
         "ece": headline["ece"],
+        "parse_coverage": headline.get("parse_coverage"),
+        "n_eval": headline.get("n"),
+        "eval_split": "test",
         "baselines": baselines,
         "causal": causal,
         "ablation": ablation,
         "probe_agreement_is_not_evidence": True,
-        "note": "headline metric is behavioral GT accuracy, not probe agreement",
+        "note": "headline metric is behavioral GT accuracy on locked test split, not probe agreement",
+        "honesty_requires_live_regen": True,
     }
     out = ensure_dir(run_dir / "artifacts" / "evaluate")
     payload = stage_result(task="evaluate", seed=_seed(cfg), n=len(trained_reports), metrics=metrics)
@@ -156,6 +215,9 @@ def stage_report(cfg: DictConfig, run_dir: Path) -> dict[str, Any]:
         "holdout_generalization_gap": pieces.get("fit", {}).get("metrics", {}).get("holdout_generalization_gap"),
         "causal_sensitivity": pieces.get("evaluate", {}).get("metrics", {}).get("causal", {}).get("causal_sensitivity"),
         "passes_causal_check": pieces.get("evaluate", {}).get("metrics", {}).get("causal", {}).get("passes_causal_check"),
+        "passes_honesty_claim": pieces.get("evaluate", {}).get("metrics", {}).get("causal", {}).get("passes_honesty_claim"),
+        "collect_mode": pieces.get("collect", {}).get("metrics", {}).get("mode"),
+        "train_mode": pieces.get("fit", {}).get("metrics", {}).get("train_mode"),
     }
     out = ensure_dir(run_dir / "artifacts" / "report")
     write_json(out / "summary.json", {"stages": pieces, "metrics": metrics})
