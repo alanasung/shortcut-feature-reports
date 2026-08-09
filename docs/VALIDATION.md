@@ -65,3 +65,24 @@ Residual (scale, not empty stages): full live GT over entire n_items on large mo
 
 Residual (scale): full n_items live GT on large models; production multi-seed honesty at scale.
 
+## Codex problem-statement fit
+
+Model: `gpt-5.6-sol` · gates: `match` + `validate` · 2026-08-09
+Artifacts: `orchestration/out/match/introspection-verbalization.md`, `orchestration/out/validate/introspection-verbalization.md`
+
+- **Match verdict:** `MATERIAL_DRIFT` · methods `mixed_proxy`
+- **Validate overall:** `SERIOUS_PROBLEMS` · fit `MATERIAL_DRIFT` · feasibility `RUNNABLE_IF_SHRUNK`
+- **Match summary:** The repository has real probe, LoRA, and patching machinery aimed at the right idea, but its shortcut-exposing synthetic task and absent k-shot protocol mean it cannot yet answer the mentor's scientific or application question.
+- **Validate summary:** A polished scaffold surrounds an experiment that currently cannot support its introspection claim because its task, labels, controls, training persistence, and causal evaluation are not scientifically valid.
+
+### Top drift / missing (match)
+- dataset prompts explicitly reveal feature names and shortcut metadata, so success need not be introspection
+- hint reliance compares conflicting hints on content-free question IDs rather than hint versus no hint on real questions
+- random planted and live behavioral labels are pooled while feature-level live provenance is granted after partial scoring
+- the documented k-shot in-context protocol is unused by live call sites
+
+### Blocking (validate)
+- `src/introspect/introspect/data.py`: Prompts contain no substantive question or answer choices, and most measured-pilot labels remain randomly planted.
+- `src/introspect/introspect/pipeline.py`: At most 96 of 512 labels are updated live, but feature-level source strings enable claims over all rows.
+- `src/introspect/introspect/pipeline.py`: Causal evaluation reloads the base model and therefore does not test the LoRA-trained verbalizer.
+- `src/introspect/introspect/causal.py`: A single feature probe is applied to activation pairs from unrelated features, and cached-vector ablation never measures model behavior.
