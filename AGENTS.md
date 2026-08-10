@@ -1,9 +1,9 @@
-# Repository guide
+# Shortcut Features the Model Won't Own
 
 See [CLAUDE.md](CLAUDE.md) for the full build instructions; this file exists so
 that agents which look for `AGENTS.md` find the same context.
 
-Project: Teaching Language Models to Report What Probes Can Read
+Project: Shortcut Features the Model Won't Own
 Package: `src/introspect`
 Entry point: `python -m introspect --help`
 

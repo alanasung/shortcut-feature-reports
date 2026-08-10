@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "introspect"
 version = "0.1.0"
-description = "Train activation-faithful self-reports with patch-based honesty checks."
+description = "Probe-supervised verbal reports for decision shortcuts, with patch-based honesty checks."
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
 license = { text = "MIT" }

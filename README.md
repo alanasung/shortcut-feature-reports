@@ -1,15 +1,15 @@
 <p align="center">
-  <h1 align="center">Teaching Language Models to Report What Probes Can Read</h1>
-  <p align="center"><strong>Ground verbal self-reports in residual-stream features, then require the report to track live activation patches rather than surface cues.</strong></p>
+  <h1 align="center">Shortcut Features the Model Won't Own</h1>
+  <p align="center"><strong>Train verbal reports against probe-readable decision shortcuts, then check honesty by patching the underlying activation.</strong></p>
   </p>
 
 ---
 
 ## Overview
 
-This repository implements experimental profiles for **Teaching Language Models to Report What Probes Can Read**. Config, caching, hooks, metrics, ablations, reporting, and CI are built for reproducible local pilots on small open-weight models.
+This repository implements experimental profiles for **Shortcut Features the Model Won't Own**. Config, caching, hooks, metrics, ablations, reporting, and CI are built for reproducible local pilots on small open-weight models.
 
-Hypothesis (one line): Verbal reports can be trained against cheap internal labels, but only count as introspection if they move when the underlying activation is patched.
+Hypothesis (one line): A model can be trained to name probe-readable shortcuts in its own activations, but those reports only count if they flip when the activation is patched.
 
 ## Motivation
 
@@ -76,8 +76,7 @@ private data. Synthetic harness-validation outputs are labelled
 
 ## Status
 
-Shared spine is in place. Domain-specific stages land behind the experiment
-registry and must pass the harness-validation script before any measured claim.
+Focus: decision-shortcut verbalization and activation honesty. Shared infrastructure is in place; domain stages must pass harness validation before any measured claim.
 
 ## Related work
 
@@ -87,7 +86,7 @@ registry and must pass the harness-validation script before any measured claim.
 
 ```bibtex
 @misc{probe_readable_self_reports,
-  title        = {Teaching Language Models to Report What Probes Can Read},
+  title        = {Shortcut Features the Model Won't Own},
   author       = {Alana Sung},
   year         = {2026},
   howpublished = {Technical report},

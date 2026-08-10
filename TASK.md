@@ -1,4 +1,4 @@
-# TASK.md — Teaching Language Models to Report What Probes Can Read
+# Shortcut Features the Model Won't Own
 
 ID convention: `I##` infrastructure, `D##` data, `M##` modelling / hooks,
 `E##` experiments, `A##` ablations, `S##` sweeps, `R##` reporting.

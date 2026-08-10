@@ -1,4 +1,4 @@
-# Experiment plan
+# Experiment plan — Shortcut Features the Model Won't Own
 
 Stage-by-stage design. Each stage is registered in `src/introspect/stages.py`
 and appears in `python -m introspect stages`.

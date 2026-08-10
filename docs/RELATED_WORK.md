@@ -1,12 +1,12 @@
 # Related work
 
-This note situates **Teaching Language Models to Report What Probes Can Read** against related literature.
+This note situates **Shortcut Features the Model Won't Own** against related literature.
 
 ## Positioning
 
 Use linear-probe readouts of a model's own residual stream as cheap ground truth, and train the model to verbalize them honestly.
 
-The design hypothesis is: A model can be trained to report the state of an internal feature it was not previously verbalizing, and that ability generalizes to held-out features rather than collapsing into a surface heuristic that mimics the probe without reading the underlying activation.
+The design hypothesis is: A model can be trained to name probe-readable shortcuts in its own activations, but those reports only count if they flip when the activation is patched.
 
 ## Engagement rules
 

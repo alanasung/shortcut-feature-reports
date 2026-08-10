@@ -1,14 +1,14 @@
-# Design Document: Teaching Language Models to Report What Probes Can Read
+# Shortcut Features the Model Won't Own — design
 
 ## 1. Purpose
 
-This document is the method contract for **Teaching Language Models to Report What Probes Can Read**. It specifies what is
+This document is the method contract for **Shortcut Features the Model Won't Own**. It specifies what is
 measured, how measurement is instrumented, which artifacts are produced, and
 which claims are out of scope for the pilot profile.
 
 One-liner: Use linear-probe readouts of a model's own residual stream as cheap ground truth, and train the model to verbalize them honestly.
 
-Hypothesis: Verbal reports can be trained against cheap internal labels, but only count as introspection if they move when the underlying activation is patched.
+Hypothesis: A model can be trained to name probe-readable shortcuts in its own activations, but those reports only count if they flip when the activation is patched.
 
 ## 2. Scope
 
@@ -256,7 +256,7 @@ Run `python orchestration/scaffold2.py` from the meta-repo root after template e
 
 Run `python orchestration/scaffold2.py` from the meta-repo root after template edits.
 
-## 23. Domain methodology: Probe-Grounded Introspection
+## 23. Domain methodology: Shortcut-feature verbalization
 
 ### Behavioral ground truth (anti-circularity)
 

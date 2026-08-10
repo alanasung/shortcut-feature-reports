@@ -1,10 +1,10 @@
-# Build instructions
+# Shortcut Features the Model Won't Own
 
 Context for coding agents working in this repository.
 
 ## What this is
 
-Research implementation of "Teaching Language Models to Report What Probes Can Read".
+Research implementation of "Shortcut Features the Model Won't Own".
 
 ## Hard constraints
 

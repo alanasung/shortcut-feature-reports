@@ -1,4 +1,4 @@
-# Technical appendix
+# Shortcut Features the Model Won't Own
 
 ## A1. Technical note 1
 

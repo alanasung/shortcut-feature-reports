@@ -1,6 +1,5 @@
-# Teaching Language Models to Report What Probes Can Read
+# Shortcut Features the Model Won't Own
 
-**Target project.** Introspection Training for Verbalization Activations
 **Research areas.** Chain of thought; Mechanistic interpretability; Scalable oversight
 
 ## Summary
@@ -9,7 +8,7 @@ Use linear-probe readouts of a model's own residual stream as cheap ground truth
 
 ## Hypothesis
 
-A model can be trained to report the state of an internal feature it was not previously verbalizing, and that ability generalizes to held-out features rather than collapsing into a surface heuristic that mimics the probe without reading the underlying activation.
+A model can be trained to name probe-readable shortcuts in its own activations, but those reports only count if they flip when the activation is patched.
 
 A hypothesis worth testing has to be able to lose. This one loses if the
 measurements below come back null, and the design is built so that a null is
